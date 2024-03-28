@@ -18,26 +18,26 @@ const DEFAULT_SETTINGS: AutomationPluginSettings = {
 export default class AutomationPlugin extends Plugin {
 	settings: AutomationPluginSettings;
 	eventList: string[] = ["file-open", "active-leaf-change"];
-	debounceUpdateCommandWrapper = debounce(this.registerAutomation, 1000, true);
+	debounceUpdateAutomation = debounce(this.registerAutomation, 1000, true);
 
 	async onload() {
 		await this.loadSettings();
 
 		this.addSettingTab(new AutomationSettingTab(this.app, this));
 
-		this.registerAutomation();
+		this.debounceUpdateAutomation();
 	}
 
 	registerAutomation() {
 		for (let eventCommand of this.settings.eventCommands) {
+			if (eventCommand.commands.length == 0) { continue; }
 			// @ts-ignore
 			this.registerEvent(this.app.workspace.on(eventCommand.event, () => {
 				for (let command of eventCommand.commands) {
 					if (command) {
 						// @ts-ignore
-						this.app.commands.executeCommandById(command);
+						this.app.commands.executeCommandById(command.commandId);
 					}
-
 				}
 			}));
 		}
@@ -80,21 +80,20 @@ class AutomationSettingTab extends PluginSettingTab {
 	constructor(app: App, plugin: AutomationPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
-
-		this.getObsidianCommands();
 	}
 
-	private getObsidianCommands(): void {
+	private loadObsidianCommands(): void {
+		this.commands = [];
 		// @ts-ignore
 		Object.keys(this.app.commands.commands).forEach((key) => {
 			// @ts-ignore
 			const command: { name: string; id: string } = this.app.commands.commands[key];
-
 			this.commands.push(new ObsidianCommand(command.name, command.id));
 		});
 	}
 
 	display(): void {
+		this.loadObsidianCommands();
 		const { containerEl } = this;
 
 		containerEl.empty();
@@ -114,7 +113,7 @@ class AutomationSettingTab extends PluginSettingTab {
 					setting.commands[0] = command;
 				}
 				this.plugin.saveSettings();
-				this.plugin.debounceUpdateCommandWrapper();
+				this.plugin.debounceUpdateAutomation();
 				new Notice("Settings saved!")
 			}
 
@@ -150,6 +149,11 @@ class AutomationSettingTab extends PluginSettingTab {
 						})
 				);
 		}
+
+		let noteEl = containerEl.createEl("p", {
+			text: "Plugin needs to be reloaded after the command has been changed."
+		});
+		noteEl.setAttribute("style", "color: gray; font-style: italic; margin-top: 30px;")
 
 	}
 }
