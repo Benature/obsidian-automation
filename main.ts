@@ -30,7 +30,6 @@ export default class AutomationPlugin extends Plugin {
 
 	registerAutomation() {
 		for (let eventCommand of this.settings.eventCommands) {
-			if (!this.eventList.includes(eventCommand.event)) { continue; }
 			// @ts-ignore
 			this.registerEvent(this.app.workspace.on(eventCommand.event, () => {
 				for (let command of eventCommand.commands) {
@@ -41,8 +40,6 @@ export default class AutomationPlugin extends Plugin {
 
 				}
 			}));
-			break;
-
 		}
 	}
 
