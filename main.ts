@@ -33,8 +33,13 @@ export default class AutomationPlugin extends Plugin {
 			if (!this.eventList.includes(eventCommand.event)) { continue; }
 			// @ts-ignore
 			this.registerEvent(this.app.workspace.on(eventCommand.event, () => {
-				// @ts-ignore
-				this.app.commands.executeCommandById(eventCommand.commands[0].commandId);
+				for (let command of eventCommand.commands) {
+					if (command) {
+						// @ts-ignore
+						this.app.commands.executeCommandById(command);
+					}
+
+				}
 			}));
 			break;
 
