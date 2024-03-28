@@ -1,81 +1,44 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TextComponent, debounce } from 'obsidian';
+import { GenericTextSuggester } from 'src/settings/suggester/genericTextSuggester'
+import { ObsidianCommand } from 'src/types/ObsidianCommand'
+import { IObsidianCommand } from 'src/types/IObsidianCommand'
 
-// Remember to rename these classes and interfaces!
-
-interface MyPluginSettings {
-	mySetting: string;
+interface eventCommandSettings {
+	event: string;
+	commands: IObsidianCommand[];
+}
+interface AutomationPluginSettings {
+	eventCommands: eventCommandSettings[];
 }
 
-const DEFAULT_SETTINGS: MyPluginSettings = {
-	mySetting: 'default'
+const DEFAULT_SETTINGS: AutomationPluginSettings = {
+	eventCommands: []
 }
 
-export default class MyPlugin extends Plugin {
-	settings: MyPluginSettings;
+export default class AutomationPlugin extends Plugin {
+	settings: AutomationPluginSettings;
+	eventList: string[] = ["file-open", "window-close"];
+	debounceUpdateCommandWrapper = debounce(this.registerAutomation, 1000, true);
 
 	async onload() {
 		await this.loadSettings();
 
-		// This creates an icon in the left ribbon.
-		const ribbonIconEl = this.addRibbonIcon('dice', 'Sample Plugin', (evt: MouseEvent) => {
-			// Called when the user clicks the icon.
-			new Notice('This is a notice!');
-		});
-		// Perform additional things with the ribbon
-		ribbonIconEl.addClass('my-plugin-ribbon-class');
+		this.addSettingTab(new AutomationSettingTab(this.app, this));
 
-		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
-		const statusBarItemEl = this.addStatusBarItem();
-		statusBarItemEl.setText('Status Bar Text');
+		this.registerAutomation();
+	}
 
-		// This adds a simple command that can be triggered anywhere
-		this.addCommand({
-			id: 'open-sample-modal-simple',
-			name: 'Open sample modal (simple)',
-			callback: () => {
-				new SampleModal(this.app).open();
-			}
-		});
-		// This adds an editor command that can perform some operation on the current editor instance
-		this.addCommand({
-			id: 'sample-editor-command',
-			name: 'Sample editor command',
-			editorCallback: (editor: Editor, view: MarkdownView) => {
-				console.log(editor.getSelection());
-				editor.replaceSelection('Sample Editor Command');
-			}
-		});
-		// This adds a complex command that can check whether the current state of the app allows execution of the command
-		this.addCommand({
-			id: 'open-sample-modal-complex',
-			name: 'Open sample modal (complex)',
-			checkCallback: (checking: boolean) => {
-				// Conditions to check
-				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (markdownView) {
-					// If checking is true, we're simply "checking" if the command can be run.
-					// If checking is false, then we want to actually perform the operation.
-					if (!checking) {
-						new SampleModal(this.app).open();
-					}
+	registerAutomation() {
+		for (let eventCommand of this.settings.eventCommands) {
+			if (!this.eventList.includes(eventCommand.event)) { continue; }
+			// @ts-ignore
+			this.registerEvent(this.app.workspace.on(eventCommand.event, () => {
+				// @ts-ignore
+				this.app.commands.executeCommandById(eventCommand.commands[0].commandId);
+			}));
+			break;
 
-					// This command will only show up in Command Palette when the check function returns true
-					return true;
-				}
-			}
-		});
-
-		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SampleSettingTab(this.app, this));
-
-		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-		// Using this function will automatically remove the event listener when this plugin is disabled.
-		this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-			console.log('click', evt);
-		});
-
-		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
-		this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
+		}
 	}
 
 	onunload() {
@@ -97,38 +60,93 @@ class SampleModal extends Modal {
 	}
 
 	onOpen() {
-		const {contentEl} = this;
+		const { contentEl } = this;
 		contentEl.setText('Woah!');
 	}
 
 	onClose() {
-		const {contentEl} = this;
+		const { contentEl } = this;
 		contentEl.empty();
 	}
 }
 
-class SampleSettingTab extends PluginSettingTab {
-	plugin: MyPlugin;
+class AutomationSettingTab extends PluginSettingTab {
+	plugin: AutomationPlugin;
+	private commands: IObsidianCommand[] = [];
 
-	constructor(app: App, plugin: MyPlugin) {
+	constructor(app: App, plugin: AutomationPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
+
+		this.getObsidianCommands();
+	}
+
+	private getObsidianCommands(): void {
+		// @ts-ignore
+		Object.keys(this.app.commands.commands).forEach((key) => {
+			// @ts-ignore
+			const command: { name: string; id: string } = this.app.commands.commands[key];
+
+			this.commands.push(new ObsidianCommand(command.name, command.id));
+		});
+		// @ts-ignore
+		console.log(this.app.commands);
+	}
+
+	private addEventCommandSettings(eventName: string, command: IObsidianCommand | undefined) {
+		if (command == undefined) { return; }
+		let setting = this.plugin.settings.eventCommands.find(s => eventName === s.event);
+		if (setting == undefined) {
+			setting = { event: eventName, commands: [] }
+			this.plugin.settings.eventCommands.push(setting)
+		}
+		setting.commands[0] = command;
+		this.plugin.saveSettings();
+		this.plugin.debounceUpdateCommandWrapper();
+		new Notice("Settings saved!")
 	}
 
 	display(): void {
-		const {containerEl} = this;
+		const { containerEl } = this;
 
 		containerEl.empty();
 
-		new Setting(containerEl)
-			.setName('Setting #1')
-			.setDesc('It\'s a secret')
-			.addText(text => text
-				.setPlaceholder('Enter your secret')
-				.setValue(this.plugin.settings.mySetting)
-				.onChange(async (value) => {
-					this.plugin.settings.mySetting = value;
-					await this.plugin.saveSettings();
-				}));
+		let input: TextComponent;
+		for (let eventName of this.plugin.eventList) {
+
+			new Setting(containerEl)
+				.setName(`On ${eventName}`)
+				.setDesc("Add an Obsidian command")
+				.addText((textComponent) => {
+					input = textComponent;
+					textComponent.inputEl.style.marginRight = "1em";
+					textComponent.setPlaceholder("Obsidian command");
+					textComponent.setValue(this.plugin.settings.eventCommands.find(setting => setting.event === eventName)?.commands[0].name as string)
+					new GenericTextSuggester(
+						this.app,
+						textComponent.inputEl,
+						this.commands.map((c) => c.name)
+					);
+
+					textComponent.inputEl.addEventListener(
+						"keypress",
+						(e: KeyboardEvent) => {
+							console.log(e)
+							if (e.key === "Enter") {
+								this.addEventCommandSettings(eventName, this.commands.find((v) => v.name === input.getValue()))
+							}
+						}
+					);
+				})
+				.addButton((button) =>
+					button
+						.setCta()
+						.setButtonText("Save")
+						.onClick(() => {
+							this.addEventCommandSettings(eventName, this.commands.find((v) => v.name === input.getValue()))
+						})
+				);
+		}
+
 	}
 }
