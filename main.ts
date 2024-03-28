@@ -17,7 +17,7 @@ const DEFAULT_SETTINGS: AutomationPluginSettings = {
 
 export default class AutomationPlugin extends Plugin {
 	settings: AutomationPluginSettings;
-	eventList: string[] = ["file-open", "window-close"];
+	eventList: string[] = ["file-open", "active-leaf-change"];
 	debounceUpdateCommandWrapper = debounce(this.registerAutomation, 1000, true);
 
 	async onload() {
@@ -73,6 +73,7 @@ class SampleModal extends Modal {
 class AutomationSettingTab extends PluginSettingTab {
 	plugin: AutomationPlugin;
 	private commands: IObsidianCommand[] = [];
+	private inputTextComponent: TextComponent
 
 	constructor(app: App, plugin: AutomationPlugin) {
 		super(app, plugin);
@@ -89,21 +90,6 @@ class AutomationSettingTab extends PluginSettingTab {
 
 			this.commands.push(new ObsidianCommand(command.name, command.id));
 		});
-		// @ts-ignore
-		console.log(this.app.commands);
-	}
-
-	private addEventCommandSettings(eventName: string, command: IObsidianCommand | undefined) {
-		if (command == undefined) { return; }
-		let setting = this.plugin.settings.eventCommands.find(s => eventName === s.event);
-		if (setting == undefined) {
-			setting = { event: eventName, commands: [] }
-			this.plugin.settings.eventCommands.push(setting)
-		}
-		setting.commands[0] = command;
-		this.plugin.saveSettings();
-		this.plugin.debounceUpdateCommandWrapper();
-		new Notice("Settings saved!")
 	}
 
 	display(): void {
@@ -111,8 +97,24 @@ class AutomationSettingTab extends PluginSettingTab {
 
 		containerEl.empty();
 
-		let input: TextComponent;
 		for (let eventName of this.plugin.eventList) {
+			let input: TextComponent;
+
+			const addEventCommandSettings = (eventName: string, command: IObsidianCommand | undefined) => {
+				let setting = this.plugin.settings.eventCommands.find(s => eventName === s.event);
+				if (setting == undefined) {
+					setting = { event: eventName, commands: [] }
+					this.plugin.settings.eventCommands.push(setting)
+				}
+				if (command == undefined) {
+					setting.commands = [];
+				} else {
+					setting.commands[0] = command;
+				}
+				this.plugin.saveSettings();
+				this.plugin.debounceUpdateCommandWrapper();
+				new Notice("Settings saved!")
+			}
 
 			new Setting(containerEl)
 				.setName(`On ${eventName}`)
@@ -131,9 +133,8 @@ class AutomationSettingTab extends PluginSettingTab {
 					textComponent.inputEl.addEventListener(
 						"keypress",
 						(e: KeyboardEvent) => {
-							console.log(e)
-							if (e.key === "Enter") {
-								this.addEventCommandSettings(eventName, this.commands.find((v) => v.name === input.getValue()))
+							if (e.key.toLowerCase() === "enter") {
+								addEventCommandSettings(eventName, this.commands.find((v) => v.name === input.getValue()))
 							}
 						}
 					);
@@ -143,7 +144,7 @@ class AutomationSettingTab extends PluginSettingTab {
 						.setCta()
 						.setButtonText("Save")
 						.onClick(() => {
-							this.addEventCommandSettings(eventName, this.commands.find((v) => v.name === input.getValue()))
+							addEventCommandSettings(eventName, this.commands.find((v) => v.name === input.getValue()))
 						})
 				);
 		}
