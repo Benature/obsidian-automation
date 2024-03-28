@@ -123,7 +123,7 @@ class AutomationSettingTab extends PluginSettingTab {
 					input = textComponent;
 					textComponent.inputEl.style.marginRight = "1em";
 					textComponent.setPlaceholder("Obsidian command");
-					textComponent.setValue(this.plugin.settings.eventCommands.find(setting => setting.event === eventName)?.commands[0].name as string)
+					textComponent.setValue(this.plugin.settings.eventCommands.find(setting => setting.event === eventName)?.commands[0]?.name as string)
 					new GenericTextSuggester(
 						this.app,
 						textComponent.inputEl,

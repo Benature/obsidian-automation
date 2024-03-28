@@ -3,7 +3,7 @@
 	"name": "Automation",
 	"version": "0.0.1",
 	"minAppVersion": "0.15.0",
-	"description": "Execute commands on specific event.",
+	"description": "Execute commands on specific events.",
 	"author": "Benature",
 	"authorUrl": "https://github.com/Benature",
 	"fundingUrl": {
