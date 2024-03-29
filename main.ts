@@ -56,21 +56,6 @@ export default class AutomationPlugin extends Plugin {
 	}
 }
 
-class SampleModal extends Modal {
-	constructor(app: App) {
-		super(app);
-	}
-
-	onOpen() {
-		const { contentEl } = this;
-		contentEl.setText('Woah!');
-	}
-
-	onClose() {
-		const { contentEl } = this;
-		contentEl.empty();
-	}
-}
 
 class AutomationSettingTab extends PluginSettingTab {
 	plugin: AutomationPlugin;
@@ -122,7 +107,6 @@ class AutomationSettingTab extends PluginSettingTab {
 				.setDesc("Add an Obsidian command")
 				.addText((textComponent) => {
 					input = textComponent;
-					textComponent.inputEl.style.marginRight = "1em";
 					textComponent.setPlaceholder("Obsidian command");
 					textComponent.setValue(this.plugin.settings.eventCommands.find(setting => setting.event === eventName)?.commands[0]?.name as string)
 					new GenericTextSuggester(
