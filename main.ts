@@ -137,7 +137,5 @@ class AutomationSettingTab extends PluginSettingTab {
 		let noteEl = containerEl.createEl("p", {
 			text: "Plugin needs to be reloaded after the command has been changed."
 		});
-		noteEl.setAttribute("style", "color: gray; font-style: italic; margin-top: 30px;")
-
 	}
 }
