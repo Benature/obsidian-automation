@@ -16,10 +16,7 @@ export function getTimeRemaining(givenTime: string) {
 	}
 
 	const currentTime = new Date();
-	// console.log(currentTime, currentTime.getTime())
-	// console.log(targetTime, targetTime.getTime())
 	const remainingTime = targetTime.getTime() - currentTime.getTime();
-	// console.log(remainingTime)
 	return remainingTime
 }
 
@@ -42,4 +39,14 @@ export function hourString2time(str: string): Date | null {
 	else {
 		return null;
 	}
+}
+
+export function fromStringCode(code: string): string {
+	const wrapping_fn = window.eval(
+		"(function anonymous(){" +
+		`return ${code};` +
+		"\n})"
+	);
+	const res = wrapping_fn();
+	return res;
 }

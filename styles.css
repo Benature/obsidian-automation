@@ -19,4 +19,5 @@ button.mod-cta.automation-delete {
 .automation-invalid-input input {
 	background-color: var(--color-red);
 	color: var(--text-on-accent);
+	opacity: 0.6;
 }

@@ -1,9 +1,10 @@
-import { App, Editor, Debouncer, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TextComponent, debounce, ButtonComponent } from 'obsidian';
-import type { EventRef } from 'obsidian'
+import { App, Editor, Debouncer, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TextComponent, debounce, ButtonComponent, getAllTags } from 'obsidian';
+import type { CachedMetadata, EventRef, MetadataCache } from 'obsidian'
 import { GenericTextSuggester } from 'src/settings/suggester/genericTextSuggester'
 import { ObsidianCommand } from 'src/types/ObsidianCommand'
 import { IObsidianCommand } from 'src/types/IObsidianCommand'
-import { getTimeRemaining, hourString2time } from 'src/util'
+import { fromStringCode, getTimeRemaining, hourString2time } from 'src/util'
+import { v4 as uuidv4 } from "uuid";
 
 
 enum FilterKind {
@@ -19,6 +20,8 @@ enum AutomationType {
 interface filterSettings {
 	kind: FilterKind;
 	pattern: string;
+	modeRegExp: boolean;
+	modeCode: boolean;
 }
 
 interface IntervalSettings {
@@ -39,10 +42,14 @@ interface EventSettings {
 interface eventCommandSettings {
 	id: string;
 	type: AutomationType;
+	enabled: boolean;
 	commands: IObsidianCommand[];
-	filter: filterSettings;
-	eventSettings: EventSettings;
-	timerSettings: IntervalSettings;
+	filters: filterSettings[];
+
+	eventSetting: EventSettings;
+	timerSetting: IntervalSettings;
+
+	name: string;
 }
 
 enum EventType {
@@ -54,19 +61,23 @@ enum EventType {
 const DefaultEventCommandSettings: eventCommandSettings = {
 	id: "default-id",
 	type: AutomationType.event,
+	enabled: true,
 	commands: [],
-	filter: {
+	filters: [{
 		kind: FilterKind.none,
-		pattern: ""
-	},
-	eventSettings: {
+		pattern: "",
+		modeRegExp: true,
+		modeCode: false,
+	}],
+	eventSetting: {
 		type: EventType.fileOpen,
 	},
-	timerSettings: {
+	timerSetting: {
 		interval: 0,
 		type: IntervalType.everyDay,
 		when: ""
-	}
+	},
+	name: "demo"
 }
 
 interface AutomationPluginSettings {
@@ -91,11 +102,11 @@ export default class AutomationPlugin extends Plugin {
 
 	setTimer(eventCommandId: string) {
 		const eventCommand = this.settings.eventCommands.find(e => e.id == eventCommandId);
-		if (eventCommand == null || eventCommand.type !== AutomationType.timeout) {
+		if (eventCommand == null || eventCommand.type !== AutomationType.timeout || !eventCommand.enabled) {
 			return;
 		}
 		// this.toBeInterval.add(eventCommand.id);
-		const remainTime = getTimeRemaining(eventCommand.timerSettings.when);
+		const remainTime = getTimeRemaining(eventCommand.timerSetting.when);
 		if (remainTime == null) {
 			return;
 		}
@@ -142,19 +153,26 @@ export default class AutomationPlugin extends Plugin {
 		console.log(this.timerLog)
 	}
 
+	test() {
+		const file = this.app.workspace.getActiveFile();
+		console.log(file);
+		const frontmatter = this.app.metadataCache.getCache(file?.path as string)?.frontmatter
+		console.log(frontmatter)
+		// console.log(getAllTags(this.app.metadataCache.getCache(file?.path as string) as CachedMetadata));
+	}
+
+
 
 
 	async onload() {
 		await this.loadSettings();
-		await this.ensureDefaultSettings;
 		this.eventRefList = [];
 
 		this.addSettingTab(new AutomationSettingTab(this.app, this));
 
 		this.debounceUpdateAutomation();
 
-
-
+		// this.test();
 		for (let mode of ["source", "preview"]) {
 			this.addCommand({
 				id: `ensure-${mode}-mode`,
@@ -187,21 +205,7 @@ export default class AutomationPlugin extends Plugin {
 			}
 		})
 
-		// window.setInterval(() => {
 
-		// }, 1000 * 60 * 60 * 24)
-
-
-		// let a = 0;
-		// window.eval("a=1;")
-		// console.log(a)
-		// let content = `"wawawa"`
-		// const wrapping_fn = window.eval(
-		// 	"(function anonymous(){" +
-		// 	`return ${content};` +
-		// 	"\n})"
-		// );
-		// console.log(wrapping_fn());
 	}
 
 	clearAutomation() {
@@ -219,24 +223,27 @@ export default class AutomationPlugin extends Plugin {
 		this.timeoutIdSet.clear();
 	}
 
+
 	updateAutomation() {
+		// console.log("updateAutomation")
 		this.clearAutomation();
 
 		for (let eventCommand of this.settings.eventCommands) {
 			// console.log(eventCommand)
-			if (eventCommand.commands.length == 0) { continue; }
+			if (eventCommand.commands.length == 0 || !eventCommand.enabled) { continue; }
 
 			switch (eventCommand.type) {
 				case AutomationType.event:
 					// @ts-ignore
-					const eventRef = this.app.workspace.on(eventCommand.eventSettings.type, () => {
+					const eventRef = this.app.workspace.on(eventCommand.eventSetting.type, () => {
 						// console.log("event", eventCommand)
-						if (!this.eventFilter(eventCommand.filter)) {
+						if (!this.eventFilter(eventCommand.filters)) {
 							return;
 						}
 						setTimeout(() => {
 							for (let command of eventCommand.commands) {
 								if (command) {
+									// console.log(command)
 									// @ts-ignore
 									let r = this.app.commands.executeCommandById(command.commandId);
 								}
@@ -262,6 +269,7 @@ export default class AutomationPlugin extends Plugin {
 
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+		await this.ensureDefaultSettings();
 	}
 
 	async saveSettings() {
@@ -275,22 +283,33 @@ export default class AutomationPlugin extends Plugin {
 		await this.saveSettings();
 	}
 
-	eventFilter(filterSetting: filterSettings) {
-		switch (filterSetting.kind) {
-			case FilterKind.filePath:
-				const path = this.app.workspace.getActiveFile()?.path;
-				if (path == undefined) { return false; }
-				if (path.match(new RegExp(filterSetting.pattern))) {
+	eventFilter(filterSettings: filterSettings[]) {
+		for (let filterSetting of filterSettings) {
+			switch (filterSetting.kind) {
+				case FilterKind.filePath:
+					const path = this.app.workspace.getActiveFile()?.path;
+					if (path == undefined) { return false; }
+					let pattern = filterSetting.pattern;
+					if (filterSetting.modeCode) {
+						pattern = fromStringCode(pattern);
+					}
+					if (path.match(new RegExp(pattern))) {
+						continue;
+						// return true;
+					}
+					return false;
+					break;
+				case FilterKind.none:
+					// do nothing
+					continue;
 					return true;
-				}
-				break;
-			case FilterKind.none:
-				// do nothing
-				return true;
-			default:
-				// unknown kind
-				return false;
+					break;
+				default:
+					// unknown kind
+					return false;
+			}
 		}
+		return true;
 	}
 }
 
@@ -300,14 +319,14 @@ class AutomationSettingTab extends PluginSettingTab {
 	private commands: IObsidianCommand[] = [];
 	EntriesElList: HTMLElement[];
 
-	debounceReset;
+	debounceResetSlowly;
 
 	constructor(app: App, plugin: AutomationPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
 
 
-		this.debounceReset = debounce(() => { plugin.debounceUpdateAutomation(); }, 1000 * 60);
+		this.debounceResetSlowly = debounce(() => { plugin.debounceUpdateAutomation(); }, 1000 * 60);
 	}
 
 	private loadObsidianCommands(): void {
@@ -335,7 +354,8 @@ class AutomationSettingTab extends PluginSettingTab {
 				button.setTooltip("Add new automation")
 					.setButtonText("Add Automation")
 					.setCta().onClick(async () => {
-						this.plugin.settings.eventCommands.push(DefaultEventCommandSettings);
+						let newEventCommand = Object.assign({}, DefaultEventCommandSettings, { id: uuidv4() });
+						this.plugin.settings.eventCommands.push(newEventCommand);
 						await this.plugin.saveSettings();
 						this.display();
 					});
@@ -394,7 +414,7 @@ class AutomationSettingTab extends PluginSettingTab {
 
 		switch (eventCommand.type) {
 			case AutomationType.event:
-				containerEl.createEl("h4", { text: `Event on ${eventCommand.eventSettings.type}` });
+				containerEl.createEl("h4", { text: `Event on ${eventCommand.eventSetting.type}` });
 				break;
 			case AutomationType.timeout:
 				containerEl.createEl("h4", { text: `Interval` });
@@ -416,9 +436,18 @@ class AutomationSettingTab extends PluginSettingTab {
 						const oldValue = eventCommand.type;
 						this.plugin.settings.eventCommands[i].type = value as AutomationType;
 						await this.plugin.saveSettings();
-						this.debounceReset();
+						this.plugin.debounceUpdateAutomation();
 						if (value != oldValue) { this.displayEntry(i); }
 					}))
+			.addToggle((toggle) => {
+				toggle.setValue(eventCommand.enabled)
+					.setTooltip("Enable / Disable this automation")
+					.onChange(async (value) => {
+						this.plugin.settings.eventCommands[i].enabled = value;
+						await this.plugin.saveSettings();
+						this.plugin.debounceUpdateAutomation();
+					})
+			})
 			.addButton((button) =>
 				button
 					.setCta()
@@ -428,7 +457,7 @@ class AutomationSettingTab extends PluginSettingTab {
 					.onClick(async () => {
 						this.plugin.settings.eventCommands.splice(i, 1);
 						await this.plugin.saveSettings();
-						this.debounceReset();
+						this.plugin.debounceUpdateAutomation();
 						this.display();
 					})
 			);
@@ -440,12 +469,12 @@ class AutomationSettingTab extends PluginSettingTab {
 						dropDown
 							.addOption(EventType.fileOpen, 'File open')
 							.addOption(EventType.activeLeafChange, 'Active leaf change')
-							.setValue(eventCommand.eventSettings.type || EventType.fileOpen)
+							.setValue(eventCommand.eventSetting.type || EventType.fileOpen)
 							.onChange(async (value) => {
-								const oldValue = eventCommand.eventSettings.type;
-								this.plugin.settings.eventCommands[i].eventSettings.type = value as EventType;
+								const oldValue = eventCommand.eventSetting.type;
+								this.plugin.settings.eventCommands[i].eventSetting.type = value as EventType;
 								await this.plugin.saveSettings();
-								this.debounceReset();
+								this.debounceResetSlowly();
 								if (value != oldValue) { this.display(); }
 							})
 
@@ -458,19 +487,19 @@ class AutomationSettingTab extends PluginSettingTab {
 				whenSetting.addText((cb) => {
 					cb
 						.setPlaceholder(`HH:MM`)
-						.setValue(eventCommand.timerSettings.when)
+						.setValue(eventCommand.timerSetting.when)
 						.onChange(async (value) => {
 							if (hourString2time(value) != null) {
-								this.plugin.settings.eventCommands[i].timerSettings.when = value;
+								this.plugin.settings.eventCommands[i].timerSetting.when = value;
 								await this.plugin.saveSettings();
-								this.debounceReset();
+								this.debounceResetSlowly();
 								whenSetting.settingEl.classList.remove("automation-invalid-input");
 							} else {
 								whenSetting.setClass("automation-invalid-input");
 							}
 						});
 				});
-				if (hourString2time(eventCommand.timerSettings.when) == null) {
+				if (hourString2time(eventCommand.timerSetting.when) == null) {
 					whenSetting.setClass("automation-invalid-input");
 				}
 
@@ -539,25 +568,33 @@ class AutomationSettingTab extends PluginSettingTab {
 						dropDown
 							.addOption(FilterKind.none, '-')
 							.addOption(FilterKind.filePath, 'File path')
-							.setValue(eventCommand?.filter?.kind || FilterKind.none)
+							.setValue(eventCommand?.filters[0]?.kind || FilterKind.none)
 							.onChange(async (value) => {
-								const oldValue = eventCommand?.filter?.kind;
-								this.plugin.settings.eventCommands[i].filter.kind = value as FilterKind;
+								const oldValue = eventCommand?.filters[0]?.kind;
+								this.plugin.settings.eventCommands[i].filters[0].kind = value as FilterKind;
 								await this.plugin.saveSettings();
-								this.debounceReset();
+								this.debounceResetSlowly();
 								if (value != oldValue) { this.display(); }
 							}));
-				if (eventCommand.filter.kind === FilterKind.filePath) {
+				if (eventCommand.filters[0].kind === FilterKind.filePath) {
 					filterSetting.addText((textComponent) => {
 						textComponent.setPlaceholder("filter pattern");
-						textComponent.setValue(eventCommand?.filter?.pattern as string)
+						textComponent.setValue(eventCommand?.filters[0]?.pattern as string)
 						textComponent.onChange(async (value) => {
-							console.log(i, value, this.plugin.settings.eventCommands[i])
-							this.plugin.settings.eventCommands[i].filter.pattern = value;
+							this.plugin.settings.eventCommands[i].filters[0].pattern = value;
 							await this.plugin.saveSettings();
-							this.debounceReset();
+							this.debounceResetSlowly();
 						})
 					});
+					filterSetting.addToggle((toggle) => {
+						toggle.setValue(eventCommand?.filters[0]?.modeCode)
+							.setTooltip("Source code mode")
+							.onChange(async (value) => {
+								this.plugin.settings.eventCommands[i].filters[0].modeCode = value;
+								await this.plugin.saveSettings();
+								this.plugin.debounceUpdateAutomation();
+							})
+					})
 				}
 				break;
 			case AutomationType.timeout:
