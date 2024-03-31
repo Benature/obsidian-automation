@@ -41,7 +41,13 @@ export function hourString2time(str: string): Date | null {
 	}
 }
 
-export function fromStringCode(code: string): string {
+export function fromStringCode(code: string): string | null {
+	if (!checkStringCode(code)) {
+		let msg = `Invalid string code: ${code}`;
+		new Notice(msg);
+		console.error(msg);
+		return null;
+	}
 	const wrapping_fn = window.eval(
 		"(function anonymous(){" +
 		`return ${code};` +
@@ -49,4 +55,12 @@ export function fromStringCode(code: string): string {
 	);
 	const res = wrapping_fn();
 	return res;
+}
+
+function checkStringCode(code: string): boolean {
+	// regex check: cannot use `return`, `window`, `setTimeout`, `setInterval`, ...
+	if (code.match(/[^a-zA-Z](return|window|setTimeout|setInterval)[^a-zA-Z0-9]/)) {
+		return false;
+	}
+	return true;
 }

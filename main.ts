@@ -289,9 +289,10 @@ export default class AutomationPlugin extends Plugin {
 				case FilterKind.filePath:
 					const path = this.app.workspace.getActiveFile()?.path;
 					if (path == undefined) { return false; }
-					let pattern = filterSetting.pattern;
+					let pattern: string | null = filterSetting.pattern;
 					if (filterSetting.modeCode) {
 						pattern = fromStringCode(pattern);
+						if (pattern == null) { return false; }
 					}
 					if (path.match(new RegExp(pattern))) {
 						continue;
