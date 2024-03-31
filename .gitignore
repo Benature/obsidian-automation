@@ -24,3 +24,5 @@ data.json
 *.json
 !manifest.json
 !manifest-beta.json
+
+*.zip
