@@ -8,4 +8,4 @@ del:
 	@git push origin --delete "$(tag)"
 
 build:
-	zip automation.zip main.js style.css manifest.json manifest-beta.json
+	zip automation.zip main.js styles.css manifest.json manifest-beta.json

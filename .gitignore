@@ -26,3 +26,4 @@ data.json
 !manifest-beta.json
 
 *.zip
+*.sh
