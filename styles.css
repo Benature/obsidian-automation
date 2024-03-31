@@ -1,8 +1,13 @@
-/*
+.automation-bottom-desc {
+	color: gray;
+	font-style: italic;
+	margin-top: 30px;
+}
 
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
+.automation-hide {
+	display: none;
+}
 
-If your plugin does not need CSS, delete this file.
-
-*/
+button.mod-cta.automation-delete {
+	background-color: var(--color-orange);
+}
