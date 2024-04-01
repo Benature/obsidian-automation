@@ -39,7 +39,7 @@ interface EventSettings {
 	type: EventType;
 }
 
-interface eventCommandSettings {
+interface taskSettings {
 	id: string;
 	type: AutomationType;
 	enabled: boolean;
@@ -58,7 +58,7 @@ enum EventType {
 	fileChange = "file-change",
 }
 
-const DefaultEventCommandSettings: eventCommandSettings = {
+const DefaultActionSettings: taskSettings = {
 	id: "default-id",
 	type: AutomationType.event,
 	enabled: true,
@@ -81,11 +81,11 @@ const DefaultEventCommandSettings: eventCommandSettings = {
 }
 
 interface AutomationPluginSettings {
-	eventCommands: eventCommandSettings[];
+	actions: taskSettings[];
 }
 
 const DEFAULT_SETTINGS: AutomationPluginSettings = {
-	eventCommands: [DefaultEventCommandSettings],
+	actions: [DefaultActionSettings],
 }
 
 export default class AutomationPlugin extends Plugin {
@@ -96,33 +96,31 @@ export default class AutomationPlugin extends Plugin {
 	eventRefList: EventRef[];
 
 	timerLog: any[] = [];
-	timerSet: Set<string> = new Set(); // set of eventCommand.id
+	timerSet: Set<string> = new Set(); // set of actionSetting.id
 	timeoutIdSet: Set<number> = new Set(); // id from `window.setTimeout()`
-	// toBeInterval: Set<string>;
 
-	setTimer(eventCommandId: string) {
-		const eventCommand = this.settings.eventCommands.find(e => e.id == eventCommandId);
-		if (eventCommand == null || eventCommand.type !== AutomationType.timeout || !eventCommand.enabled) {
+	setTimer(actionId: string) {
+		const Action = this.settings.actions.find(e => e.id == actionId);
+		if (Action == null || Action.type !== AutomationType.timeout || !Action.enabled) {
 			return;
 		}
-		// this.toBeInterval.add(eventCommand.id);
-		const remainTime = getTimeRemaining(eventCommand.timerSetting.when);
+		// this.toBeInterval.add(Action.id);
+		const remainTime = getTimeRemaining(Action.timerSetting.when);
 		if (remainTime == null) {
 			return;
 		}
-		if (eventCommand.commands.length == 0) {
+		if (Action.commands.length == 0) {
 			return;
 		}
 		const timeoutId = window.setTimeout(() => {
-			// this.toBeInterval.delete(eventCommand.id);
 
-			for (let command of eventCommand.commands) {
+			for (let command of Action.commands) {
 				if (command) {
 					// @ts-ignore
 					let r = this.app.commands.executeCommandById(command.commandId);
 				}
 			}
-			this.setTimer(eventCommandId);
+			this.setTimer(actionId);
 			// const intervalId = window.setInterval(() => {
 			// 	for (let command of eventCommand.commands) {
 			// 		if (command) {
@@ -136,12 +134,12 @@ export default class AutomationPlugin extends Plugin {
 
 
 		}, remainTime);
-		console.log(`Set timeout for ${eventCommandId} when ${window.moment(new Date()).format("HH:mm")}, ${Math.ceil(remainTime / 1000 / 60)} min to run.`)
-		this.timerSet.add(eventCommandId);
+		console.log(`Set timeout for ${actionId} when ${window.moment(new Date()).format("HH:mm")}, ${Math.ceil(remainTime / 1000 / 60)} min to run.`)
+		this.timerSet.add(actionId);
 		this.timeoutIdSet.add(timeoutId);
 		this.timerLog.push({
-			id: eventCommandId,
-			eventCommand: eventCommand,
+			id: actionId,
+			action: Action,
 			now: new Date(),
 			remainTime: remainTime,
 		});
@@ -228,20 +226,18 @@ export default class AutomationPlugin extends Plugin {
 		// console.log("updateAutomation")
 		this.clearAutomation();
 
-		for (let eventCommand of this.settings.eventCommands) {
-			// console.log(eventCommand)
-			if (eventCommand.commands.length == 0 || !eventCommand.enabled) { continue; }
+		for (const Action of this.settings.actions) {
+			if (Action.commands.length == 0 || !Action.enabled) { continue; }
 
-			switch (eventCommand.type) {
+			switch (Action.type) {
 				case AutomationType.event:
 					// @ts-ignore
-					const eventRef = this.app.workspace.on(eventCommand.eventSetting.type, () => {
-						// console.log("event", eventCommand)
-						if (!this.eventFilter(eventCommand.filters)) {
+					const eventRef = this.app.workspace.on(Action.eventSetting.type, () => {
+						if (!this.eventFilter(Action.filters)) {
 							return;
 						}
 						setTimeout(() => {
-							for (let command of eventCommand.commands) {
+							for (let command of Action.commands) {
 								if (command) {
 									// console.log(command)
 									// @ts-ignore
@@ -254,7 +250,7 @@ export default class AutomationPlugin extends Plugin {
 					this.registerEvent(eventRef);
 					break;
 				case AutomationType.timeout:
-					this.setTimer(eventCommand.id);
+					this.setTimer(Action.id);
 					break;
 				default:
 					break;
@@ -277,8 +273,8 @@ export default class AutomationPlugin extends Plugin {
 	}
 
 	async ensureDefaultSettings() {
-		for (let i = 0; i < this.settings.eventCommands.length; i++) {
-			this.settings.eventCommands[i] = Object.assign({}, DefaultEventCommandSettings, this.settings.eventCommands[i]);
+		for (let i = 0; i < this.settings.actions.length; i++) {
+			this.settings.actions[i] = Object.assign({}, DefaultActionSettings, this.settings.actions[i]);
 		}
 		await this.saveSettings();
 	}
@@ -355,25 +351,15 @@ class AutomationSettingTab extends PluginSettingTab {
 				button.setTooltip("Add new automation")
 					.setButtonText("Add Automation")
 					.setCta().onClick(async () => {
-						let newEventCommand = Object.assign({}, DefaultEventCommandSettings, { id: uuidv4() });
-						this.plugin.settings.eventCommands.push(newEventCommand);
+						let newActionSetting = Object.assign({}, DefaultActionSettings, { id: uuidv4() });
+						this.plugin.settings.actions.push(newActionSetting);
 						await this.plugin.saveSettings();
 						this.display();
 					});
 			})
 
-		// for (let eventName of this.plugin.eventList) {
-		// 	let input: TextComponent;
 
-		// 	let eventCommand = this.plugin.settings.eventCommands.find(setting => setting.event === eventName) as eventCommandSettings;
-		// 	if (eventCommand == undefined) {
-		// 		eventCommand = Object.assign({}, DefaultEventCommandSettings, { event: eventName, type: AutomationType.event });
-		// 		// eventCommand = { event: eventName, type: EventType.event } as unknown as eventCommandSettings;
-		// 		this.plugin.settings.eventCommands.push(eventCommand);
-		// 		this.plugin.saveSettings();
-		// 	}
-		// 	console.log(eventCommand)
-		for (let i = 0; i < this.plugin.settings.eventCommands.length; i++) {
+		for (let i = 0; i < this.plugin.settings.actions.length; i++) {
 			this.EntriesElList.push(containerEl.createDiv());
 			this.displayEntry(i);
 		}
@@ -388,23 +374,21 @@ class AutomationSettingTab extends PluginSettingTab {
 		const containerEl = this.EntriesElList[i];
 		containerEl.empty();
 
-		const eventCommand = this.plugin.settings.eventCommands[i];
-		// const i = this.plugin.settings.eventCommands.indexOf(eventCommand);
+		const Action = this.plugin.settings.actions[i];
 		let input: TextComponent;
-		const addEventCommandSettings = () => {
+		const addActionSettings = () => {
 			const value = input.getValue()
 			if (value.trim() === "") {
-				this.plugin.settings.eventCommands[i].commands = [];
+				this.plugin.settings.actions[i].commands = [];
 				new Notice("Command is removed!");
 			}
 			else {
 				let command = this.commands.find((c) => c.name === value);
-				// let setting = this.plugin.settings.eventCommands[I] as eventCommandSettings;
 				if (command == undefined) {
 					new Notice("Unknown Command!");
 					return false;
 				} else {
-					this.plugin.settings.eventCommands[i].commands[0] = command;
+					this.plugin.settings.actions[i].commands[0] = command;
 				}
 				new Notice("Command has been saved!")
 			}
@@ -413,9 +397,9 @@ class AutomationSettingTab extends PluginSettingTab {
 			return true;
 		}
 
-		switch (eventCommand.type) {
+		switch (Action.type) {
 			case AutomationType.event:
-				containerEl.createEl("h4", { text: `Event on ${eventCommand.eventSetting.type}` });
+				containerEl.createEl("h4", { text: `Event on ${Action.eventSetting.type}` });
 				break;
 			case AutomationType.timeout:
 				containerEl.createEl("h4", { text: `Interval` });
@@ -432,19 +416,19 @@ class AutomationSettingTab extends PluginSettingTab {
 				dropDown
 					.addOption(AutomationType.event, 'Trigger')
 					.addOption(AutomationType.timeout, 'Timer')
-					.setValue(eventCommand.type || AutomationType.event)
+					.setValue(Action.type || AutomationType.event)
 					.onChange(async (value) => {
-						const oldValue = eventCommand.type;
-						this.plugin.settings.eventCommands[i].type = value as AutomationType;
+						const oldValue = Action.type;
+						this.plugin.settings.actions[i].type = value as AutomationType;
 						await this.plugin.saveSettings();
 						this.plugin.debounceUpdateAutomation();
 						if (value != oldValue) { this.displayEntry(i); }
 					}))
 			.addToggle((toggle) => {
-				toggle.setValue(eventCommand.enabled)
+				toggle.setValue(Action.enabled)
 					.setTooltip("Enable / Disable this automation")
 					.onChange(async (value) => {
-						this.plugin.settings.eventCommands[i].enabled = value;
+						this.plugin.settings.actions[i].enabled = value;
 						await this.plugin.saveSettings();
 						this.plugin.debounceUpdateAutomation();
 					})
@@ -456,13 +440,13 @@ class AutomationSettingTab extends PluginSettingTab {
 					// .setIcon("cross")
 					.setClass("automation-delete")
 					.onClick(async () => {
-						this.plugin.settings.eventCommands.splice(i, 1);
+						this.plugin.settings.actions.splice(i, 1);
 						await this.plugin.saveSettings();
 						this.plugin.debounceUpdateAutomation();
 						this.display();
 					})
 			);
-		switch (eventCommand.type) {
+		switch (Action.type) {
 			case AutomationType.event:
 				new Setting(containerEl)
 					.setName(`Event type`)
@@ -470,10 +454,10 @@ class AutomationSettingTab extends PluginSettingTab {
 						dropDown
 							.addOption(EventType.fileOpen, 'File open')
 							.addOption(EventType.activeLeafChange, 'Active leaf change')
-							.setValue(eventCommand.eventSetting.type || EventType.fileOpen)
+							.setValue(Action.eventSetting.type || EventType.fileOpen)
 							.onChange(async (value) => {
-								const oldValue = eventCommand.eventSetting.type;
-								this.plugin.settings.eventCommands[i].eventSetting.type = value as EventType;
+								const oldValue = Action.eventSetting.type;
+								this.plugin.settings.actions[i].eventSetting.type = value as EventType;
 								await this.plugin.saveSettings();
 								this.debounceResetSlowly();
 								if (value != oldValue) { this.display(); }
@@ -488,10 +472,10 @@ class AutomationSettingTab extends PluginSettingTab {
 				whenSetting.addText((cb) => {
 					cb
 						.setPlaceholder(`HH:MM`)
-						.setValue(eventCommand.timerSetting.when)
+						.setValue(Action.timerSetting.when)
 						.onChange(async (value) => {
 							if (hourString2time(value) != null) {
-								this.plugin.settings.eventCommands[i].timerSetting.when = value;
+								this.plugin.settings.actions[i].timerSetting.when = value;
 								await this.plugin.saveSettings();
 								this.debounceResetSlowly();
 								whenSetting.settingEl.classList.remove("automation-invalid-input");
@@ -500,7 +484,7 @@ class AutomationSettingTab extends PluginSettingTab {
 							}
 						});
 				});
-				if (hourString2time(eventCommand.timerSetting.when) == null) {
+				if (hourString2time(Action.timerSetting.when) == null) {
 					whenSetting.setClass("automation-invalid-input");
 				}
 
@@ -516,11 +500,11 @@ class AutomationSettingTab extends PluginSettingTab {
 			// console.log(input)
 			textComponent
 				.setPlaceholder("Obsidian command")
-				.setValue(this.plugin.settings.eventCommands[i]?.commands[0]?.name as string)
+				.setValue(this.plugin.settings.actions[i]?.commands[0]?.name as string)
 				.onChange(async (value) => {
 					// @ts-ignore
 					const buttonEl = commandSetting.components[1]?.buttonEl;
-					if (value === this.plugin.settings.eventCommands[i]?.commands[0]?.name) {
+					if (value === this.plugin.settings.actions[i]?.commands[0]?.name) {
 						buttonEl.classList.add("automation-hide");
 					} else {
 						buttonEl.classList.remove("automation-hide");
@@ -536,7 +520,7 @@ class AutomationSettingTab extends PluginSettingTab {
 				"keypress",
 				(e: KeyboardEvent) => {
 					if (e.key.toLowerCase() === "enter") {
-						if (addEventCommandSettings()) {
+						if (addActionSettings()) {
 							// @ts-ignore
 							commandSetting.components[1]?.buttonEl.classList.add("automation-hide");
 						}
@@ -552,7 +536,7 @@ class AutomationSettingTab extends PluginSettingTab {
 				.setTooltip("The command is not saved yet. Click to save it.")
 				.setClass("automation-hide")
 				.onClick(() => {
-					if (addEventCommandSettings()) {
+					if (addActionSettings()) {
 						// @ts-ignore
 						commandSetting.components[1]?.buttonEl.classList.add("automation-hide");
 					}
@@ -560,7 +544,7 @@ class AutomationSettingTab extends PluginSettingTab {
 
 		);
 
-		switch (eventCommand.type) {
+		switch (Action.type) {
 			case AutomationType.event:
 				let filterSetting = new Setting(containerEl)
 					.setName(`File filter`)
@@ -569,29 +553,29 @@ class AutomationSettingTab extends PluginSettingTab {
 						dropDown
 							.addOption(FilterKind.none, '-')
 							.addOption(FilterKind.filePath, 'File path')
-							.setValue(eventCommand?.filters[0]?.kind || FilterKind.none)
+							.setValue(Action?.filters[0]?.kind || FilterKind.none)
 							.onChange(async (value) => {
-								const oldValue = eventCommand?.filters[0]?.kind;
-								this.plugin.settings.eventCommands[i].filters[0].kind = value as FilterKind;
+								const oldValue = Action?.filters[0]?.kind;
+								this.plugin.settings.actions[i].filters[0].kind = value as FilterKind;
 								await this.plugin.saveSettings();
 								this.debounceResetSlowly();
 								if (value != oldValue) { this.display(); }
 							}));
-				if (eventCommand.filters[0].kind === FilterKind.filePath) {
+				if (Action.filters[0].kind === FilterKind.filePath) {
 					filterSetting.addText((textComponent) => {
 						textComponent.setPlaceholder("filter pattern");
-						textComponent.setValue(eventCommand?.filters[0]?.pattern as string)
+						textComponent.setValue(Action?.filters[0]?.pattern as string)
 						textComponent.onChange(async (value) => {
-							this.plugin.settings.eventCommands[i].filters[0].pattern = value;
+							this.plugin.settings.actions[i].filters[0].pattern = value;
 							await this.plugin.saveSettings();
 							this.debounceResetSlowly();
 						})
 					});
 					filterSetting.addToggle((toggle) => {
-						toggle.setValue(eventCommand?.filters[0]?.modeCode)
+						toggle.setValue(Action?.filters[0]?.modeCode)
 							.setTooltip("Source code mode")
 							.onChange(async (value) => {
-								this.plugin.settings.eventCommands[i].filters[0].modeCode = value;
+								this.plugin.settings.actions[i].filters[0].modeCode = value;
 								await this.plugin.saveSettings();
 								this.plugin.debounceUpdateAutomation();
 							})
