@@ -35,11 +35,17 @@ enum IntervalType {
 	everyDay = "every day",
 }
 
+enum EventType {
+	fileOpen = "file-open",
+	activeLeafChange = "active-leaf-change",
+	fileChange = "file-change",
+}
+
 interface EventSettings {
 	type: EventType;
 }
 
-interface taskSettings {
+interface actionSettings {
 	id: string;
 	type: AutomationType;
 	enabled: boolean;
@@ -52,13 +58,7 @@ interface taskSettings {
 	name: string;
 }
 
-enum EventType {
-	fileOpen = "file-open",
-	activeLeafChange = "active-leaf-change",
-	fileChange = "file-change",
-}
-
-const DefaultActionSettings: taskSettings = {
+const DefaultActionSettings: actionSettings = {
 	id: "default-id",
 	type: AutomationType.event,
 	enabled: true,
@@ -80,12 +80,16 @@ const DefaultActionSettings: taskSettings = {
 	name: "demo"
 }
 
+function newDefaultActionSettings() {
+	return JSON.parse(JSON.stringify(DefaultActionSettings));
+}
+
 interface AutomationPluginSettings {
-	actions: taskSettings[];
+	actions: actionSettings[];
 }
 
 const DEFAULT_SETTINGS: AutomationPluginSettings = {
-	actions: [DefaultActionSettings],
+	actions: [newDefaultActionSettings()],
 }
 
 export default class AutomationPlugin extends Plugin {
@@ -265,19 +269,19 @@ export default class AutomationPlugin extends Plugin {
 
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-		await this.ensureDefaultSettings();
+		// await this.ensureDefaultSettings();
 	}
 
 	async saveSettings() {
 		await this.saveData(this.settings);
 	}
 
-	async ensureDefaultSettings() {
-		for (let i = 0; i < this.settings.actions.length; i++) {
-			this.settings.actions[i] = Object.assign({}, DefaultActionSettings, this.settings.actions[i]);
-		}
-		await this.saveSettings();
-	}
+	// async ensureDefaultSettings() {
+	// 	for (let i = 0; i < this.settings.actions.length; i++) {
+	// 		this.settings.actions[i] = Object.assign({}, newDefaultActionSettings(), this.settings.actions[i]);
+	// 	}
+	// 	await this.saveSettings();
+	// }
 
 	eventFilter(filterSettings: filterSettings[]) {
 		for (let filterSetting of filterSettings) {
@@ -351,13 +355,14 @@ class AutomationSettingTab extends PluginSettingTab {
 				button.setTooltip("Add new automation")
 					.setButtonText("Add Automation")
 					.setCta().onClick(async () => {
-						let newActionSetting = Object.assign({}, DefaultActionSettings, { id: uuidv4() });
+						const newActionSetting = Object.assign({}, newDefaultActionSettings(), { id: uuidv4() });
+						console.log(DefaultActionSettings)
+						console.log(newActionSetting)
 						this.plugin.settings.actions.push(newActionSetting);
 						await this.plugin.saveSettings();
 						this.display();
 					});
 			})
-
 
 		for (let i = 0; i < this.plugin.settings.actions.length; i++) {
 			this.EntriesElList.push(containerEl.createDiv());
@@ -541,7 +546,6 @@ class AutomationSettingTab extends PluginSettingTab {
 						commandSetting.components[1]?.buttonEl.classList.add("automation-hide");
 					}
 				})
-
 		);
 
 		switch (Action.type) {
