@@ -1,7 +1,7 @@
 {
 	"id": "automation",
 	"name": "Automation",
-	"version": "0.1.0-b3",
+	"version": "0.1.0-b4",
 	"minAppVersion": "0.15.0",
 	"description": "Execute commands on specific events.",
 	"author": "Benature",
