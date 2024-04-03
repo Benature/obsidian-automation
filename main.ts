@@ -1,5 +1,5 @@
 import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TextComponent, debounce } from 'obsidian';
-import { GenericTextSuggester } from 'src/settings/suggester/genericTextSuggester'
+import { CommandSuggester } from 'src/settings/suggester/genericTextSuggester'
 import { ObsidianCommand } from 'src/types/ObsidianCommand'
 import { IObsidianCommand } from 'src/types/IObsidianCommand'
 
@@ -109,7 +109,7 @@ class AutomationSettingTab extends PluginSettingTab {
 					input = textComponent;
 					textComponent.setPlaceholder("Obsidian command");
 					textComponent.setValue(this.plugin.settings.eventCommands.find(setting => setting.event === eventName)?.commands[0]?.name as string)
-					new GenericTextSuggester(
+					new CommandSuggester(
 						this.app,
 						textComponent.inputEl,
 						this.commands.map((c) => c.name)
