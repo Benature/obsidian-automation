@@ -2,6 +2,7 @@
 
 This plugin listen to specific events and trigger commands (which are available in command palette) based on those events.
 
+> Note: to use commands of Quick Add, remember to enable the ⚡️ icon in its settings. :)
 
 ## Install
 
