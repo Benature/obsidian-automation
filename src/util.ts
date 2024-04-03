@@ -42,19 +42,24 @@ export function hourString2time(str: string): Date | null {
 }
 
 export function fromStringCode(code: string): string | null {
-	if (!checkStringCode(code)) {
-		let msg = `Invalid string code: ${code}`;
-		new Notice(msg);
-		console.error(msg);
+	try {
+		if (!checkStringCode(code)) {
+			let msg = `Invalid string code: ${code}`;
+			new Notice(msg);
+			console.error(msg);
+			return null;
+		}
+		const wrapping_fn = window.eval(
+			"(function anonymous(){" +
+			`return ${code};` +
+			"\n})"
+		);
+		const res = wrapping_fn();
+		return res;
+	} catch (e) {
+		console.error(e);
 		return null;
 	}
-	const wrapping_fn = window.eval(
-		"(function anonymous(){" +
-		`return ${code};` +
-		"\n})"
-	);
-	const res = wrapping_fn();
-	return res;
 }
 
 function checkStringCode(code: string): boolean {
@@ -63,4 +68,15 @@ function checkStringCode(code: string): boolean {
 		return false;
 	}
 	return true;
+}
+
+
+export function ensureString2list(properties: string | string[] | null | undefined): string[] {
+	if (properties === null || properties === undefined) {
+		return [];
+	} else if (typeof properties === "string") {
+		return properties.replace(/\n|^\s*,|,\s*$/g, "").replace(/,,+/g, ",").split(",").map(p => p.trim());
+	} else {
+		return properties;
+	}
 }

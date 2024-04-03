@@ -3,13 +3,15 @@ import type { CachedMetadata, EventRef, MetadataCache } from 'obsidian'
 import { GenericTextSuggester } from 'src/settings/suggester/genericTextSuggester'
 import { ObsidianCommand } from 'src/types/ObsidianCommand'
 import { IObsidianCommand } from 'src/types/IObsidianCommand'
-import { fromStringCode, getTimeRemaining, hourString2time } from 'src/util'
+import { ensureString2list, fromStringCode, getTimeRemaining, hourString2time } from 'src/util'
 import { v4 as uuidv4 } from "uuid";
+import { genFilterDesc } from 'src/settings/suggester/util';
 
 
-enum FilterKind {
-	filePath = "file path in Obsidian",
+export enum FilterKind {
 	none = "none",
+	filePath = "file path in Obsidian",
+	tags = "tags"
 }
 
 enum AutomationType {
@@ -45,7 +47,7 @@ interface EventSettings {
 	type: EventType;
 }
 
-interface actionSettings {
+export interface ActionSettings {
 	id: string;
 	type: AutomationType;
 	enabled: boolean;
@@ -58,7 +60,7 @@ interface actionSettings {
 	name: string;
 }
 
-const DefaultActionSettings: actionSettings = {
+const DefaultActionSettings: ActionSettings = {
 	id: "default-id",
 	type: AutomationType.event,
 	enabled: true,
@@ -85,7 +87,7 @@ function newDefaultActionSettings() {
 }
 
 interface AutomationPluginSettings {
-	actions: actionSettings[];
+	actions: ActionSettings[];
 }
 
 const DEFAULT_SETTINGS: AutomationPluginSettings = {
@@ -202,8 +204,7 @@ export default class AutomationPlugin extends Plugin {
 			name: `demo notice`,
 			callback: () => {
 				new Notice("demo notice");
-				console.log("demo notice")
-				console.log(new Date());
+				console.log("demo notice", new Date());
 			}
 		})
 
@@ -299,12 +300,18 @@ export default class AutomationPlugin extends Plugin {
 						// return true;
 					}
 					return false;
-					break;
+				case FilterKind.tags:
+					const file = this.app.workspace.getActiveFile();
+					const frontmatter = this.app.metadataCache.getCache(file?.path as string)?.frontmatter;
+					const tags = ensureString2list(frontmatter?.tags);
+					const targetTags = ensureString2list(filterSetting.pattern);
+					if (tags.find(t => targetTags.includes(t))) {
+						continue;
+					}
+					return false;
 				case FilterKind.none:
 					// do nothing
 					continue;
-					return true;
-					break;
 				default:
 					// unknown kind
 					return false;
@@ -552,11 +559,12 @@ class AutomationSettingTab extends PluginSettingTab {
 			case AutomationType.event:
 				let filterSetting = new Setting(containerEl)
 					.setName(`File filter`)
-					// .setDesc("Add an Obsidian command")
+					.setDesc(genFilterDesc(this.plugin.settings.actions[i]))
 					.addDropdown(dropDown =>
 						dropDown
 							.addOption(FilterKind.none, '-')
 							.addOption(FilterKind.filePath, 'File path')
+							.addOption(FilterKind.tags, 'Tags')
 							.setValue(Action?.filters[0]?.kind || FilterKind.none)
 							.onChange(async (value) => {
 								const oldValue = Action?.filters[0]?.kind;
@@ -565,21 +573,28 @@ class AutomationSettingTab extends PluginSettingTab {
 								this.debounceResetSlowly();
 								if (value != oldValue) { this.display(); }
 							}));
-				if (Action.filters[0].kind === FilterKind.filePath) {
+
+				if (Action.filters[0].kind !== FilterKind.none) {
+					// filterSetting.setDesc("Pattern (now): " + fromStringCode(Action.filters[0].pattern));
+
 					filterSetting.addText((textComponent) => {
 						textComponent.setPlaceholder("filter pattern");
 						textComponent.setValue(Action?.filters[0]?.pattern as string)
 						textComponent.onChange(async (value) => {
 							this.plugin.settings.actions[i].filters[0].pattern = value;
+							filterSetting.setDesc(genFilterDesc(this.plugin.settings.actions[i]))
 							await this.plugin.saveSettings();
 							this.debounceResetSlowly();
 						})
 					});
+				}
+				if (Action.filters[0].kind === FilterKind.filePath) {
 					filterSetting.addToggle((toggle) => {
 						toggle.setValue(Action?.filters[0]?.modeCode)
 							.setTooltip("Source code mode")
 							.onChange(async (value) => {
 								this.plugin.settings.actions[i].filters[0].modeCode = value;
+								filterSetting.setDesc(genFilterDesc(this.plugin.settings.actions[i]))
 								await this.plugin.saveSettings();
 								this.plugin.debounceUpdateAutomation();
 							})
