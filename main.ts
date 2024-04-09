@@ -1,4 +1,4 @@
-import { App, Editor, Debouncer, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TextComponent, debounce, ButtonComponent, getAllTags } from 'obsidian';
+import { App, Editor, Debouncer, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TextComponent, debounce, ButtonComponent, getAllTags, normalizePath } from 'obsidian';
 import type { CachedMetadata, EventRef, MetadataCache } from 'obsidian'
 import { GenericTextSuggester } from 'src/settings/suggester/genericTextSuggester'
 import { ObsidianCommand } from 'src/types/ObsidianCommand'
@@ -27,7 +27,7 @@ interface filterSettings {
 }
 
 interface IntervalSettings {
-	interval: number;
+	// interval: number;
 	type: IntervalType;
 	when: string;
 }
@@ -75,7 +75,7 @@ const DefaultActionSettings: ActionSettings = {
 		type: EventType.fileOpen,
 	},
 	timerSetting: {
-		interval: 0,
+		// interval: 0,
 		type: IntervalType.everyDay,
 		when: ""
 	},
@@ -88,10 +88,18 @@ function newDefaultActionSettings() {
 
 interface AutomationPluginSettings {
 	actions: ActionSettings[];
+	debug: {
+		console: boolean;
+		writeLog: boolean;
+	}
 }
 
 const DEFAULT_SETTINGS: AutomationPluginSettings = {
 	actions: [newDefaultActionSettings()],
+	debug: {
+		console: true,
+		writeLog: true,
+	}
 }
 
 export default class AutomationPlugin extends Plugin {
@@ -104,6 +112,9 @@ export default class AutomationPlugin extends Plugin {
 	timerLog: any[] = [];
 	timerSet: Set<string> = new Set(); // set of actionSetting.id
 	timeoutIdSet: Set<number> = new Set(); // id from `window.setTimeout()`
+
+	logs: string[] = [];
+	logFilePath: string;
 
 	setTimer(actionId: string) {
 		const Action = this.settings.actions.find(e => e.id == actionId);
@@ -124,6 +135,7 @@ export default class AutomationPlugin extends Plugin {
 				if (command) {
 					// @ts-ignore
 					let r = this.app.commands.executeCommandById(command.commandId);
+					this.log(`Run command:`, command)
 				}
 			}
 			this.setTimer(actionId);
@@ -140,7 +152,7 @@ export default class AutomationPlugin extends Plugin {
 
 
 		}, remainTime);
-		console.log(`Set timeout for ${actionId} when ${window.moment(new Date()).format("HH:mm")}, ${Math.ceil(remainTime / 1000 / 60)} min to run.`)
+		this.log(`Set timeout for ${actionId} when ${window.moment(new Date()).format("HH:mm")}, ${Math.ceil(remainTime / 1000 / 60)} min to run.`)
 		this.timerSet.add(actionId);
 		this.timeoutIdSet.add(timeoutId);
 		this.timerLog.push({
@@ -153,16 +165,16 @@ export default class AutomationPlugin extends Plugin {
 	}
 
 	checkTimerStatus() {
-		console.log("Timer Log")
-		console.log(this.timerLog)
+		this.log("Timer Log")
+		this.log(this.timerLog)
 	}
 
 	test() {
 		const file = this.app.workspace.getActiveFile();
-		console.log(file);
+		this.log(file);
 		const frontmatter = this.app.metadataCache.getCache(file?.path as string)?.frontmatter
-		console.log(frontmatter)
-		// console.log(getAllTags(this.app.metadataCache.getCache(file?.path as string) as CachedMetadata));
+		this.log(frontmatter)
+		// this.log(getAllTags(this.app.metadataCache.getCache(file?.path as string) as CachedMetadata));
 	}
 
 
@@ -171,6 +183,7 @@ export default class AutomationPlugin extends Plugin {
 	async onload() {
 		await this.loadSettings();
 		this.eventRefList = [];
+		this.logFilePath = normalizePath(this.manifest.dir + `/log-${window.moment(new Date()).format("YYYY-MM-DD HH:mm:ss")}.log`);
 
 		this.addSettingTab(new AutomationSettingTab(this.app, this));
 
@@ -212,7 +225,7 @@ export default class AutomationPlugin extends Plugin {
 	}
 
 	clearAutomation() {
-		console.log("clear automation")
+		this.log("clear automation")
 		// clear eventRef for this.app.workspace
 		for (let e of this.eventRefList) {
 			this.app.workspace.offref(e);
@@ -228,7 +241,7 @@ export default class AutomationPlugin extends Plugin {
 
 
 	updateAutomation() {
-		// console.log("updateAutomation")
+		// this.log("updateAutomation")
 		this.clearAutomation();
 
 		for (const Action of this.settings.actions) {
@@ -244,7 +257,7 @@ export default class AutomationPlugin extends Plugin {
 						setTimeout(() => {
 							for (let command of Action.commands) {
 								if (command) {
-									// console.log(command)
+									// this.log(command)
 									// @ts-ignore
 									let r = this.app.commands.executeCommandById(command.commandId);
 								}
@@ -319,6 +332,18 @@ export default class AutomationPlugin extends Plugin {
 		}
 		return true;
 	}
+
+	log(...messages: unknown[]) {
+		if (this.settings.debug.console)
+			console.log(...messages);
+		if (!this.settings.debug.writeLog) return;
+		this.logs.push(`===> [${window.moment(new Date()).format("YYYY-MM-DD HH:mm:ss")}]`);
+		for (const message of messages) {
+			this.logs.push(String(message));
+		}
+		// this.logs.push(`<=================`);
+		this.app.vault.adapter.write(this.logFilePath, this.logs.join(" "));
+	};
 }
 
 
