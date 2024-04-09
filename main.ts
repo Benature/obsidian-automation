@@ -29,7 +29,11 @@ interface filterSettings {
 interface IntervalSettings {
 	// interval: number;
 	type: IntervalType;
-	when: string;
+	when: {
+		HM: string;
+		weekDay?: number;
+		monthDay?: number;
+	}[];
 }
 
 enum IntervalType {
@@ -77,7 +81,9 @@ const DefaultActionSettings: ActionSettings = {
 	timerSetting: {
 		// interval: 0,
 		type: IntervalType.everyDay,
-		when: ""
+		when: [{
+			HM: ""
+		}],
 	},
 	name: "demo"
 }
@@ -122,7 +128,7 @@ export default class AutomationPlugin extends Plugin {
 			return;
 		}
 		// this.toBeInterval.add(Action.id);
-		const remainTime = getTimeRemaining(Action.timerSetting.when);
+		const remainTime = getTimeRemaining(Action.timerSetting.when[0].HM);
 		if (remainTime == null) {
 			return;
 		}
@@ -436,10 +442,15 @@ class AutomationSettingTab extends PluginSettingTab {
 
 		switch (Action.type) {
 			case AutomationType.event:
-				containerEl.createEl("h4", { text: `Event on ${Action.eventSetting.type}` });
+				let headingEl = containerEl.createEl("h4", { text: `Event on ${Action.eventSetting.type}` });
+				headingEl.empty();
+				headingEl.append(
+					createEl("span", { text: `Event on ` }),
+					createEl("code", { text: `${Action.eventSetting.type}` }),
+				)
 				break;
 			case AutomationType.timeout:
-				containerEl.createEl("h4", { text: `Interval` });
+				containerEl.createEl("h4", { text: `Timer` });
 				break;
 			default:
 				containerEl.createEl("h4", { text: `Automation ${i}` });
@@ -482,7 +493,12 @@ class AutomationSettingTab extends PluginSettingTab {
 						this.plugin.debounceUpdateAutomation();
 						this.display();
 					})
-			);
+		);
+		switch (Action.type) { 
+			case AutomationType.timeout:
+			automationTypeSetting.setDesc(`Timer is an experimental feature.`)
+				break;
+		}
 		switch (Action.type) {
 			case AutomationType.event:
 				new Setting(containerEl)
@@ -509,10 +525,10 @@ class AutomationSettingTab extends PluginSettingTab {
 				whenSetting.addText((cb) => {
 					cb
 						.setPlaceholder(`HH:MM`)
-						.setValue(Action.timerSetting.when)
+						.setValue(Action.timerSetting.when[0].HM)
 						.onChange(async (value) => {
 							if (hourString2time(value) != null) {
-								this.plugin.settings.actions[i].timerSetting.when = value;
+								this.plugin.settings.actions[i].timerSetting.when[0].HM = value;
 								await this.plugin.saveSettings();
 								this.debounceResetSlowly();
 								whenSetting.settingEl.classList.remove("automation-invalid-input");
@@ -521,7 +537,7 @@ class AutomationSettingTab extends PluginSettingTab {
 							}
 						});
 				});
-				if (hourString2time(Action.timerSetting.when) == null) {
+				if (hourString2time(Action.timerSetting.when[0].HM) == null) {
 					whenSetting.setClass("automation-invalid-input");
 				}
 
