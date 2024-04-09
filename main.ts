@@ -97,8 +97,8 @@ interface AutomationPluginSettings {
 const DEFAULT_SETTINGS: AutomationPluginSettings = {
 	actions: [newDefaultActionSettings()],
 	debug: {
-		console: true,
-		writeLog: true,
+		console: false,
+		writeLog: false,
 	}
 }
 
