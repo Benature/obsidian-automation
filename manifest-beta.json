@@ -1,7 +1,7 @@
 {
 	"id": "automation",
 	"name": "Automation",
-	"version": "0.1.0-b5",
+	"version": "0.1.1",
 	"minAppVersion": "0.15.0",
 	"description": "Execute commands on specific events.",
 	"author": "Benature",
@@ -12,4 +12,4 @@
 		"微信/支付宝": "https://s2.loli.net/2024/01/30/jQ9fTSyBxvXRoOM.png"
 	},
 	"isDesktopOnly": false
-}
+
