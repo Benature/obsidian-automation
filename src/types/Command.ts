@@ -1,15 +1,13 @@
-import type { CommandType } from "./CommandType";
-import type { ICommand } from "./ICommand";
 import { v4 as uuidv4 } from "uuid";
 
-export abstract class Command implements ICommand {
+export abstract class Command  {
 	name: string;
-	type: CommandType;
+	// type: CommandType;
 	id: string;
 
-	protected constructor(name: string, type: CommandType) {
+	protected constructor(name: string) {
 		this.name = name;
-		this.type = type;
+		// this.type = type;
 		this.id = uuidv4();
 	}
 }

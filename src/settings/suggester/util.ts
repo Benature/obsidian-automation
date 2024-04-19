@@ -1,6 +1,6 @@
 
 import { fromStringCode } from "src/util";
-import { ActionSettings, FilterKind } from "../../../main";
+import { ActionSettings, FilterKind } from "../types";
 
 export function genFilterDesc(Action: ActionSettings): string {
 	const filter = Action.filters[0];
