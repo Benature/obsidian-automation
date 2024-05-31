@@ -33,6 +33,8 @@ export interface IntervalSettings {
 export enum IntervalType {
 	none = "none",
 	everyDay = "every day",
+	everyWeek = "every week",
+	everyMonth = "every month",
 }
 
 export enum EventType {

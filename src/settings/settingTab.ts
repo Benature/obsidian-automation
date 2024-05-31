@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from "uuid";
 import { hourString2time } from 'src/util';
 import { CommandSuggester } from './suggester/genericTextSuggester';
 import { genFilterDesc } from './suggester/util';
-import { ActionSettings, AutomationType, FilterKind, newDefaultActionSettings, filterSettings, DefaultActionSettings, EventType } from './types';
+import { ActionSettings, AutomationType, FilterKind, newDefaultActionSettings, filterSettings, DefaultActionSettings, EventType, IntervalType } from './types';
 
 
 export class AutomationSettingTab extends PluginSettingTab {
@@ -175,6 +175,21 @@ export class AutomationSettingTab extends PluginSettingTab {
 					)
 				break;
 			case AutomationType.timeout:
+				new Setting(containerEl)
+					.setName(`Timer type`)
+					.addDropdown(dropDown =>
+						dropDown
+							.addOption(IntervalType.everyDay, 'Every day')
+							.addOption(IntervalType.everyWeek, 'Every week')
+							.addOption(IntervalType.everyMonth, 'Every month')
+							.setValue(Action.timerSetting.type || IntervalType.everyDay)
+							.onChange(async (value) => {
+								const oldValue = Action.type;
+								this.plugin.settings.actions[i].type = value as AutomationType;
+								await this.plugin.saveSettings();
+								this.plugin.debounceUpdateAutomation();
+								if (value != oldValue) { this.displayEntry(i); }
+							}))
 				let whenSetting = new Setting(containerEl)
 					.setName(`Everyday when`)
 					.setDesc(`Run commands on what time every day. (HH:MM format)`);
