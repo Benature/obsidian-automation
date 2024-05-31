@@ -41,7 +41,7 @@ export default class AutomationPlugin extends Plugin {
 			return;
 		}
 		// this.toBeInterval.add(Action.id);
-		const remainTime = getTimeRemaining(Action.timerSetting.when[0].HM);
+		const remainTime = getTimeRemaining(Action.timerSetting);
 		if (remainTime == null) {
 			return;
 		}
@@ -68,9 +68,8 @@ export default class AutomationPlugin extends Plugin {
 			// }, 1000 * 60 * 60 * 24);
 			// this.timerSet.add(intervalId);
 			// this.registerInterval(intervalId);
-
-
 		}, remainTime);
+
 		this.log(`Set timeout for ${actionId} when ${window.moment(new Date()).format("HH:mm")}, ${Math.ceil(remainTime / 1000 / 60)} min to run.`)
 		this.timerSet.add(actionId);
 		this.timeoutIdSet.add(timeoutId);
@@ -97,10 +96,24 @@ export default class AutomationPlugin extends Plugin {
 	}
 
 
-
+	async checkSettingsUpdate() {
+		let modified = false;
+		for (let i = 0;  i< this.settings.actions.length; i++) { 
+			if (typeof this.settings.actions[i].timerSetting.when === "string") {
+				console.log(this.settings.actions[i].timerSetting)
+				// @ts-ignore
+				this.settings.actions[i].timerSetting.when = [{ HM: this.settings.actions[i].timerSetting.when as string }]
+				modified = true;
+			}
+		}
+		if (modified) {
+			await this.saveSettings();
+		}
+}
 
 	async onload() {
 		await this.loadSettings();
+		await this.checkSettingsUpdate();
 		this.eventRefList = [];
 		this.logFilePath = normalizePath(this.manifest.dir + `/log-${window.moment(new Date()).format("YYYY-MM-DD HH:mm:ss")}.log`);
 

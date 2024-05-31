@@ -20,19 +20,31 @@ export interface filterSettings {
 	modeCode: boolean;
 }
 
-export interface IntervalSettings {
+export enum WeekDay {
+	mon = "Monday",
+	tue = "Tuesday",
+	wed = "Wednesday",
+	thu = "Thursday",
+	fri = "Friday",
+	sat = "Saturday",
+	sun = "Sunday"
+}
+
+export interface TimerSettings {
 	// interval: number;
-	type: IntervalType;
+	type: TimerType;
 	when: {
 		HM: string;
-		weekDay?: number;
-		monthDay?: number;
+		weekDay?: WeekDay;
+		monthDay?: string;
 	}[];
 }
 
-export enum IntervalType {
+export enum TimerType {
 	none = "none",
 	everyDay = "every day",
+	everyWeek = "every week",
+	everyMonth = "every month",
 }
 
 export enum EventType {
@@ -53,7 +65,7 @@ export  interface ActionSettings {
 	filters: filterSettings[];
 
 	eventSetting: EventSettings;
-	timerSetting: IntervalSettings;
+	timerSetting: TimerSettings;
 
 	name: string;
 }
@@ -74,12 +86,12 @@ export const DefaultActionSettings: ActionSettings = {
 	},
 	timerSetting: {
 		// interval: 0,
-		type: IntervalType.everyDay,
+		type: TimerType.everyDay,
 		when: [{
 			HM: ""
 		}],
 	},
-	name: "demo"
+	name: ""
 }
 
 export function newDefaultActionSettings() {
