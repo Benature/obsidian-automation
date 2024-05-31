@@ -1,19 +1,41 @@
 import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TextComponent, debounce, ButtonComponent } from 'obsidian';
+import { TimerSettings, TimerType } from './settings/types';
 
 
-export function getTimeRemaining(givenTime: string) {
-	const targetTime = hourString2time(givenTime);
+export function getTimeRemaining(settings: TimerSettings) {
+	console.log(settings)
+	const targetTime = hourString2time(settings.when[0].HM);
 	if (targetTime == null) {
-		let msg = `Invalid time string "When"`;
+		let msg = `Invalid time string "when[].HM"`;
 		new Notice(msg);
 		console.error(msg);
 		return null;
 	}
-
-	// 如果给定的时间已经过了今天的这个时刻，计算明天的时长
-	if (targetTime < new Date()) {
-		targetTime.setDate(targetTime.getDate() + 1);
+	switch (settings.type) {
+		case TimerType.everyDay:
+			// pass
+			// 如果给定的时间已经过了今天的这个时刻，计算明天的时长
+			if (targetTime < new Date()) {
+				targetTime.setDate(targetTime.getDate() + 1);
+			}
+			break;
+		case TimerType.everyWeek:
+			// todo
+			break;
+		case TimerType.everyMonth:
+			// todo
+			console.log(settings.when[0].monthDay as string)
+			console.log(parseInt(settings.when[0].monthDay as string))
+			// targetTime.setDate(parseInt(settings.when[0].monthDay as string));
+			break;
 	}
+
+	console.log(targetTime);
+
+	// // 如果给定的时间已经过了今天的这个时刻，计算明天的时长
+	// if (targetTime < new Date()) {
+	// 	targetTime.setDate(targetTime.getDate() + 1);
+	// }
 
 	const currentTime = new Date();
 	const remainingTime = targetTime.getTime() - currentTime.getTime();
