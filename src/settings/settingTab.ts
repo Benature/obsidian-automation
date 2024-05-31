@@ -3,7 +3,7 @@ import { App, Editor, Debouncer, MarkdownView, Modal, Notice, Plugin, PluginSett
 import AutomationPlugin from 'main';
 import { ObsidianCommand } from 'src/types/ObsidianCommand';
 import { v4 as uuidv4 } from "uuid";
-import { hourString2time } from 'src/util';
+import { hmString2time } from 'src/util';
 import { CommandSuggester } from './suggester/genericTextSuggester';
 import { genFilterDesc } from './suggester/util';
 import { ActionSettings, AutomationType, FilterKind, newDefaultActionSettings, filterSettings, DefaultActionSettings, EventType, TimerType, WeekDay } from './types';
@@ -50,8 +50,8 @@ export class AutomationSettingTab extends PluginSettingTab {
 					.setButtonText("Add Automation")
 					.setCta().onClick(async () => {
 						const newActionSetting = Object.assign({}, newDefaultActionSettings(), { id: uuidv4() });
-						console.log(DefaultActionSettings)
-						console.log(newActionSetting)
+						// console.log(DefaultActionSettings)
+						// console.log(newActionSetting)
 						this.plugin.settings.actions.push(newActionSetting);
 						await this.plugin.saveSettings();
 						this.display();
@@ -74,7 +74,7 @@ export class AutomationSettingTab extends PluginSettingTab {
 		containerEl.empty();
 
 		const Action = this.plugin.settings.actions[i];
-		console.log(Action);
+		// console.log(Action);
 		let input: TextComponent;
 		const addActionSettings = () => {
 			const value = input.getValue()
@@ -187,36 +187,45 @@ export class AutomationSettingTab extends PluginSettingTab {
 							.onChange(async (value) => {
 								const oldValue = Action.type;
 								this.plugin.settings.actions[i].timerSetting.type = value as TimerType;
+								switch (value) {
+									case TimerType.everyWeek:
+										if (Action.timerSetting.when[0].weekDay == undefined) {
+											this.plugin.settings.actions[i].timerSetting.when[0].weekDay = 0;
+										}
+										break;
+									case TimerType.everyMonth:
+										if (Action.timerSetting.when[0].monthDay == undefined) { 
+											this.plugin.settings.actions[i].timerSetting.when[0].monthDay = 1;
+										}
+										break;
+								}
 								await this.plugin.saveSettings();
 								this.plugin.debounceUpdateAutomation();
 								if (value != oldValue) {
-									console.log(value)
 									this.displayEntry(i);
 								}
 							}))
 				let whenSetting = new Setting(containerEl)
-					// .setName(`${Action.timerSetting.type} when`)
 					.setName(`Time`)
 					.setDesc(`Run commands on what time ${Action.timerSetting.type}. (HH:MM format)`);
 				switch (this.plugin.settings.actions[i].timerSetting.type) {
 					case TimerType.everyWeek:
 						whenSetting.addDropdown(dropDown =>
 							dropDown
-								.addOption(WeekDay.mon, 'Monday')
-								.addOption(WeekDay.tue, 'Tuesday')
-								.addOption(WeekDay.wed, 'Wednesday')
-								.addOption(WeekDay.thu, 'Thursday')
-								.addOption(WeekDay.fri, 'Friday')
-								.addOption(WeekDay.sat, 'Saturday')
-								.addOption(WeekDay.sun, 'Sunday')
-								.setValue(this.plugin.settings.actions[i].timerSetting.when[0].weekDay || WeekDay.mon)
+								.addOption("1", 'Monday')
+								.addOption("2", 'Tuesday')
+								.addOption("3", 'Wednesday')
+								.addOption("4", 'Thursday')
+								.addOption("5", 'Friday')
+								.addOption("6", 'Saturday')
+								.addOption("0", 'Sunday')
+								.setValue(this.plugin.settings.actions[i].timerSetting.when[0].weekDay?.toString() || "0")
 								.onChange(async (value) => {
 									const oldValue = Action.type;
-									this.plugin.settings.actions[i].timerSetting.when[0].weekDay = value as WeekDay;
+									this.plugin.settings.actions[i].timerSetting.when[0].weekDay = parseInt(value);
 									await this.plugin.saveSettings();
 									this.plugin.debounceUpdateAutomation();
 									if (value != oldValue) {
-										console.log(value)
 										this.displayEntry(i);
 									}
 								}))
@@ -230,14 +239,13 @@ export class AutomationSettingTab extends PluginSettingTab {
 							for (let i = 4; i <= 31; i++) {
 								dropDown.addOption(i.toString(), i.toString()+"th");
 							}
-							dropDown.setValue(this.plugin.settings.actions[i].timerSetting.when[0].monthDay || "1")
+							dropDown.setValue(this.plugin.settings.actions[i].timerSetting.when[0].monthDay?.toString() || "1")
 							dropDown.onChange(async (value) => {
 								const oldValue = Action.type;
-								this.plugin.settings.actions[i].timerSetting.when[0].monthDay = value;
+								this.plugin.settings.actions[i].timerSetting.when[0].monthDay = parseInt(value);
 								await this.plugin.saveSettings();
-								// this.plugin.debounceUpdateAutomation();
+								this.plugin.debounceUpdateAutomation();
 								if (value != oldValue) {
-									console.log(value)
 									this.displayEntry(i);
 								}
 							})
@@ -250,7 +258,7 @@ export class AutomationSettingTab extends PluginSettingTab {
 						.setPlaceholder(`HH:MM`)
 						.setValue(Action.timerSetting.when[0].HM)
 						.onChange(async (value) => {
-							if (hourString2time(value) != null) {
+							if (hmString2time(value) != null) {
 								this.plugin.settings.actions[i].timerSetting.when[0].HM = value;
 								await this.plugin.saveSettings();
 								this.debounceResetSlowly();
@@ -260,7 +268,7 @@ export class AutomationSettingTab extends PluginSettingTab {
 							}
 						});
 				});
-				if (hourString2time(Action.timerSetting.when[0].HM) == null) {
+				if (hmString2time(Action.timerSetting.when[0].HM) == null) {
 					whenSetting.setClass("automation-invalid-input");
 				}
 
@@ -273,7 +281,6 @@ export class AutomationSettingTab extends PluginSettingTab {
 		// .setDesc("Add an Obsidian command")
 		commandSetting.addText((textComponent) => {
 			input = textComponent;
-			// console.log(input)
 			textComponent
 				.setPlaceholder("Obsidian command")
 				.setValue(this.plugin.settings.actions[i]?.commands[0]?.name as string)

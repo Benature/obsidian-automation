@@ -21,13 +21,13 @@ export interface filterSettings {
 }
 
 export enum WeekDay {
-	mon = "Monday",
-	tue = "Tuesday",
-	wed = "Wednesday",
-	thu = "Thursday",
-	fri = "Friday",
-	sat = "Saturday",
-	sun = "Sunday"
+	"Sunday",
+	"Monday",
+	"Tuesday",
+	"Wednesday",
+	"Thursday",
+	"Friday",
+	"Saturday"
 }
 
 export interface TimerSettings {
@@ -35,8 +35,8 @@ export interface TimerSettings {
 	type: TimerType;
 	when: {
 		HM: string;
-		weekDay?: WeekDay;
-		monthDay?: string;
+		weekDay?: number;
+		monthDay?: number;
 	}[];
 }
 

@@ -36,6 +36,7 @@ export default class AutomationPlugin extends Plugin {
 	logFilePath: string;
 
 	setTimer(actionId: string) {
+		console.log("set timer: " + actionId);
 		const Action = this.settings.actions.find(e => e.id == actionId);
 		if (Action == null || Action.type !== AutomationType.timeout || !Action.enabled) {
 			return;
@@ -48,12 +49,17 @@ export default class AutomationPlugin extends Plugin {
 		if (Action.commands.length == 0) {
 			return;
 		}
+		if (remainTime > 2000000000) {
+			// too long timeout
+			this.log("too long timeout, abandoned.")
+			return;
+		}
 		const timeoutId = window.setTimeout(() => {
-
 			for (let command of Action.commands) {
 				if (command) {
 					// @ts-ignore
 					let r = this.app.commands.executeCommandById(command.commandId);
+					console.log(r)
 					this.log(`Run command:`, command)
 				}
 			}
@@ -70,7 +76,7 @@ export default class AutomationPlugin extends Plugin {
 			// this.registerInterval(intervalId);
 		}, remainTime);
 
-		this.log(`Set timeout for ${actionId} when ${window.moment(new Date()).format("HH:mm")}, ${Math.ceil(remainTime / 1000 / 60)} min to run.`)
+		this.log(`Set timeout for ${actionId} when ${window.moment(new Date()).format("mm-DD HH:mm")}, ${Math.ceil(remainTime / 1000 / 60)} min to run.`)
 		this.timerSet.add(actionId);
 		this.timeoutIdSet.add(timeoutId);
 		this.timerLog.push({
@@ -173,7 +179,7 @@ export default class AutomationPlugin extends Plugin {
 
 
 	updateAutomation() {
-		// this.log("updateAutomation")
+		this.log("updateAutomation")
 		this.clearAutomation();
 
 		for (const Action of this.settings.actions) {
@@ -200,6 +206,7 @@ export default class AutomationPlugin extends Plugin {
 					this.registerEvent(eventRef);
 					break;
 				case AutomationType.timeout:
+					console.log("this.setTimer(Action.id);")
 					this.setTimer(Action.id);
 					break;
 				default:

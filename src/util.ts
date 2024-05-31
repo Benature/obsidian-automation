@@ -1,10 +1,11 @@
 import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TextComponent, debounce, ButtonComponent } from 'obsidian';
 import { TimerSettings, TimerType } from './settings/types';
+import { assert } from 'console';
 
 
-export function getTimeRemaining(settings: TimerSettings) {
+export function getTimeRemaining(settings: TimerSettings): null | number {
 	console.log(settings)
-	const targetTime = hourString2time(settings.when[0].HM);
+	const targetTime = hmString2time(settings.when[0].HM);
 	if (targetTime == null) {
 		let msg = `Invalid time string "when[].HM"`;
 		new Notice(msg);
@@ -13,25 +14,32 @@ export function getTimeRemaining(settings: TimerSettings) {
 	}
 	switch (settings.type) {
 		case TimerType.everyDay:
-			// pass
 			// 如果给定的时间已经过了今天的这个时刻，计算明天的时长
 			if (targetTime < new Date()) {
 				targetTime.setDate(targetTime.getDate() + 1);
 			}
 			break;
 		case TimerType.everyWeek:
-			// todo
+			let diff = ((settings.when[0].weekDay as number) - targetTime.getDay() + 7) % 7;
+			targetTime.setDate(targetTime.getDate() + diff);
 			break;
 		case TimerType.everyMonth:
 			// todo
-			console.log(settings.when[0].monthDay as string)
-			console.log(parseInt(settings.when[0].monthDay as string))
-			// targetTime.setDate(parseInt(settings.when[0].monthDay as string));
+			let d = settings.when[0].monthDay as number;
+			let m = (new Date()).getMonth();
+			while (1) {
+				console.log("m", m)
+				targetTime.setMonth(m);
+				targetTime.setDate(d);
+				if (targetTime.getDate() === d && targetTime > new Date()) {
+					break;
+				}
+				m++;
+			}
 			break;
 	}
 
 	console.log(targetTime);
-
 	// // 如果给定的时间已经过了今天的这个时刻，计算明天的时长
 	// if (targetTime < new Date()) {
 	// 	targetTime.setDate(targetTime.getDate() + 1);
@@ -39,10 +47,12 @@ export function getTimeRemaining(settings: TimerSettings) {
 
 	const currentTime = new Date();
 	const remainingTime = targetTime.getTime() - currentTime.getTime();
-	return remainingTime
+	assert(remainingTime > 0);
+	console.log(remainingTime);
+	return remainingTime;
 }
 
-export function hourString2time(str: string): Date | null {
+export function hmString2time(str: string): Date | null {
 	if (/\d{1,2}:\d{1,2}/.test(str)) {
 		const [hours, minutes] = str.split(':').map(Number);
 		if (!(hours >= 0 && hours < 24 && minutes >= 0 && minutes < 60)) {
