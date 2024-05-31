@@ -3,12 +3,11 @@
 ## 🏗️ developed
 > to be updated in the next version
 
-## 0.1.0
+## 0.2.0-b1
+- [feature] timer for every week/month
 
-### b5
+## 0.1.x
 - [feature] trigger on tags
-
-### b4
 - [feature] timeout
 
 ## 0.0.1

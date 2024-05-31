@@ -1,25 +1,11 @@
 import { MarkdownView, Notice, Plugin, debounce, normalizePath } from 'obsidian';
 import type { EventRef } from 'obsidian'
 import { ensureString2list, fromStringCode, getTimeRemaining } from 'src/util'
-import { ActionSettings, AutomationType, FilterKind, newDefaultActionSettings, filterSettings } from 'src/settings/types';
+import { ActionSettings, AutomationType, FilterKind, newDefaultActionSettings, filterSettings, AutomationPluginSettings, DEFAULT_SETTINGS } from 'src/settings/types';
 import {AutomationSettingTab} from 'src/settings/settingTab'
 
 
-interface AutomationPluginSettings {
-	actions: ActionSettings[];
-	debug: {
-		console: boolean;
-		writeLog: boolean;
-	}
-}
 
-const DEFAULT_SETTINGS: AutomationPluginSettings = {
-	actions: [newDefaultActionSettings()],
-	debug: {
-		console: false,
-		writeLog: false,
-	}
-}
 
 export default class AutomationPlugin extends Plugin {
 	settings: AutomationPluginSettings;
@@ -36,7 +22,6 @@ export default class AutomationPlugin extends Plugin {
 	logFilePath: string;
 
 	setTimer(actionId: string) {
-		console.log("set timer: " + actionId);
 		const Action = this.settings.actions.find(e => e.id == actionId);
 		if (Action == null || Action.type !== AutomationType.timeout || !Action.enabled) {
 			return;
@@ -206,7 +191,6 @@ export default class AutomationPlugin extends Plugin {
 					this.registerEvent(eventRef);
 					break;
 				case AutomationType.timeout:
-					console.log("this.setTimer(Action.id);")
 					this.setTimer(Action.id);
 					break;
 				default:

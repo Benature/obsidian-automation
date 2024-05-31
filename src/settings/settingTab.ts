@@ -63,6 +63,18 @@ export class AutomationSettingTab extends PluginSettingTab {
 			this.displayEntry(i);
 		}
 
+		let headingEl = containerEl.createEl("h1", { text: `Advanced settings` });
+		new Setting(containerEl)
+			.setName(`Debug console log`)
+			.addToggle((toggle) => {
+				toggle.setValue(this.plugin.settings.debug.console)
+					.setTooltip("Enable / Disable console logging")
+					.onChange(async (value) => {
+						this.plugin.settings.debug.console = value;
+						await this.plugin.saveSettings();
+					})
+			})
+
 		// let noteEl = containerEl.createEl("p", {
 		// 	text: "Plugin needs to be reloaded after the command has been changed.",
 		// 	cls: "automation-bottom-desc"

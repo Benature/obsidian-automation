@@ -97,3 +97,19 @@ export const DefaultActionSettings: ActionSettings = {
 export function newDefaultActionSettings() {
 	return JSON.parse(JSON.stringify(DefaultActionSettings));
 }
+
+export interface AutomationPluginSettings {
+	actions: ActionSettings[];
+	debug: {
+		console: boolean;
+		writeLog: boolean;
+	}
+}
+
+export const DEFAULT_SETTINGS: AutomationPluginSettings = {
+	actions: [newDefaultActionSettings()],
+	debug: {
+		console: false,
+		writeLog: false,
+	}
+}

@@ -4,7 +4,6 @@ import { assert } from 'console';
 
 
 export function getTimeRemaining(settings: TimerSettings): null | number {
-	console.log(settings)
 	const targetTime = hmString2time(settings.when[0].HM);
 	if (targetTime == null) {
 		let msg = `Invalid time string "when[].HM"`;
@@ -28,7 +27,6 @@ export function getTimeRemaining(settings: TimerSettings): null | number {
 			let d = settings.when[0].monthDay as number;
 			let m = (new Date()).getMonth();
 			while (1) {
-				console.log("m", m)
 				targetTime.setMonth(m);
 				targetTime.setDate(d);
 				if (targetTime.getDate() === d && targetTime > new Date()) {
@@ -39,7 +37,6 @@ export function getTimeRemaining(settings: TimerSettings): null | number {
 			break;
 	}
 
-	console.log(targetTime);
 	// // 如果给定的时间已经过了今天的这个时刻，计算明天的时长
 	// if (targetTime < new Date()) {
 	// 	targetTime.setDate(targetTime.getDate() + 1);
@@ -48,7 +45,6 @@ export function getTimeRemaining(settings: TimerSettings): null | number {
 	const currentTime = new Date();
 	const remainingTime = targetTime.getTime() - currentTime.getTime();
 	assert(remainingTime > 0);
-	console.log(remainingTime);
 	return remainingTime;
 }
 
