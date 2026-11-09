@@ -9,14 +9,13 @@ export class CommandSuggester extends AbstractInputSuggest<string>{
 		private items: string[],
 	) {
 		super(app, inputEl);
+		this.textInputEl = inputEl;
 	}
 
 	getSuggestions(inputStr: string): string[] {
 		const inputLowerCase: string = inputStr.toLowerCase();
 
-		const filtered = this.items.filter((item) => {
-			if (item.toLowerCase().contains(inputLowerCase)) return item;
-		});
+		const filtered = this.items.filter(item => item.toLowerCase().includes(inputLowerCase));
 
 		if (!filtered) this.close();
 
@@ -28,8 +27,7 @@ export class CommandSuggester extends AbstractInputSuggest<string>{
 	}
 
 	selectSuggestion(item: string): void {
-		this.textInputEl.value = item;
-		this.textInputEl.trigger("input");
+		this.setValue(item);
 		this.close();
 	}
 }

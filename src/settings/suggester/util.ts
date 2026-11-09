@@ -1,24 +1,18 @@
-
-import { fromStringCode } from "src/util";
+import { renderPatternTemplate } from "src/util";
 import { ActionSettings, FilterKind } from "../types";
 
-export function genFilterDesc(Action: ActionSettings): string {
-	const filter = Action.filters[0];
+export function genFilterDesc(action: ActionSettings): string {
+	const filter = action.filters[0];
 	switch (filter.kind) {
 		case FilterKind.none:
-			return ``;
+			return "";
 		case FilterKind.filePath:
-			console.log(filter)
-			if (filter.modeCode) {
-				return `File path (now): ` + fromStringCode(filter.pattern) as string;
-			} else {
-				return `File path: ` + filter.pattern;
-			}
-			break;
+			return filter.modeCode
+				? `File path template (now): ${renderPatternTemplate(filter.pattern)}`
+				: `File path: ${filter.pattern}`;
 		case FilterKind.tags:
-			return `Tags (separated by comma)`;// + filter.pattern;
-			return `Tags (separated by comma): ` + filter.pattern;
-			return filter.pattern;
-
+			return `Tags (separated by comma): ${filter.pattern}`;
+		default:
+			return "";
 	}
 }

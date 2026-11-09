@@ -16,8 +16,12 @@ This plugin listens to specific events and triggers commands (which are availabl
 ### Manually install
 
 - Download latest version in [Releases](https://github.com/Benature/obsidian-automation/releases/latest)
-- Copy over `main.js`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/default-query-in-backlink/`
+- Copy over `main.js`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/automation/`
 - Reload plugins in `Community plugins` and enable `Automation`
+
+## File path templates
+
+Enable the template toggle for a file path filter to use `{{date}}`, `{{time}}`, or `{{datetime}}` in its regular expression. These fixed tokens are rendered with the local date and time; arbitrary JavaScript expressions are not executed.
 
 ## How to build
 
@@ -28,7 +32,7 @@ This plugin listens to specific events and triggers commands (which are availabl
 
 ## Support
 
-If you find this plugin useful and would like to support its development, you can sponsor me via [Buy Me a Coffee ☕️](https://www.buymeacoffee.com/benature), WeChat, Alipay or [AiFaDian](https://afdian.net/a/Benature-K). Any amount is welcome, thank you!
+If you find this plugin useful and would like to support its development, you can sponsor me via [Buy Me a Coffee ☕️](https://www.buymeacoffee.com/benature), WeChat, Alipay or [AiFaDian](https://afdian.com/a/Benature-K). Any amount is welcome, thank you!
 
 <p align="center">
 <img src="https://s2.loli.net/2024/04/01/VtX3vYLobdF6MBc.png" width="500px">

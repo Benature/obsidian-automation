@@ -94,8 +94,17 @@ export const DefaultActionSettings: ActionSettings = {
 	name: ""
 }
 
-export function newDefaultActionSettings() {
-	return JSON.parse(JSON.stringify(DefaultActionSettings));
+export function newDefaultActionSettings(): ActionSettings {
+	return {
+		...DefaultActionSettings,
+		commands: [],
+		filters: DefaultActionSettings.filters.map(filter => ({ ...filter })),
+		eventSetting: { ...DefaultActionSettings.eventSetting },
+		timerSetting: {
+			...DefaultActionSettings.timerSetting,
+			when: DefaultActionSettings.timerSetting.when.map(when => ({ ...when })),
+		},
+	};
 }
 
 export interface AutomationPluginSettings {

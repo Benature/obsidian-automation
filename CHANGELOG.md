@@ -3,6 +3,12 @@
 ## 🏗️ developed
 > to be updated in the next version
 
+## 0.1.2
+- [security] Replace JavaScript filter evaluation with fixed date/time templates
+- [fix] Preserve weekly/monthly timers and handle day, week, and month boundaries
+- [fix] Return command suggestions to the correct input and update declarative settings
+- [chore] Resolve Obsidian community review warnings and modernize release attestations
+
 ## 0.2.0-b1
 - [feature] timer for every week/month
 
