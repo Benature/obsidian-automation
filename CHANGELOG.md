@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.3
+- [fix] Restore plugin settings on Obsidian 1.15 by rendering into the setting row instead of the host-managed group list
+
 ## 🏗️ developed
 > to be updated in the next version
 
