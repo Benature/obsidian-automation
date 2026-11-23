@@ -11,11 +11,12 @@ permissions:
   attestations: write
 
 jobs:
-  release:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - name: Use Node.js
+        uses: actions/setup-node@v7
         with:
           node-version: "22.x"
           cache: npm
@@ -23,15 +24,15 @@ jobs:
         run: npm ci
       - name: Test and build
         run: npm test
-      - name: Attest build provenance
-        uses: actions/attest-build-provenance@v4.2.2
+      - name: Attest release asset build provenance
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: |
             main.js
             manifest.json
             styles.css
-      - name: Create GitHub release
-        uses: softprops/action-gh-release@v2
+      - name: Create Release
+        uses: softprops/action-gh-release@v3
         with:
           generate_release_notes: true
           draft: false
