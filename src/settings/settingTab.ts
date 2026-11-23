@@ -38,7 +38,7 @@ export class AutomationSettingTab extends PluginSettingTab {
 	getSettingDefinitions(): SettingDefinitionItem[] {
 		return [{
 			name: "Automation settings",
-			render: (_setting, group) => this.renderSettings(group.listEl),
+			render: (setting) => this.renderSettings(setting.settingEl),
 		}];
 	}
 
